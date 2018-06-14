@@ -8,7 +8,7 @@ that are specifically optimized for webpage behaviour.
 
 It's highly recommended to paste this repository link to binder and interact with the code:
 
-[![Binder](http://mybinder.org/badge.svg)](http://mybinder.org:/repo/harrisonford/AkoriSalienceNotebooks)
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/harrisonford/AkoriSalienceNotebooks/master)
 
 ### Prerequisites
 
