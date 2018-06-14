@@ -13,7 +13,7 @@ It's highly recommended to paste this repository link to binder and interact wit
 ### Prerequisites
 
 In case you want to run and modify this project locally, know that this project is updated to always work with the
-latest verion of Python 3 with the following modules:
+latest version of Python 3 with the following modules:
 * numpy
 * PIL
 * TensorFLow
