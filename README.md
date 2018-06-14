@@ -6,11 +6,13 @@ that are specifically optimized for webpage behaviour.
 
 ## Getting Started
 
-It's highly recommended to paste this repository link to binder and interact with the code.
+It's highly recommended to paste this repository link to binder and interact with the code:
+
+[![Binder](http://mybinder.org/badge.svg)](http://mybinder.org:/repo/harrisonford/AkoriSalienceNotebooks)
 
 ### Prerequisites
 
-In case you want to run and modify this project locally, know that this project is updated to always work with the 
+In case you want to run and modify this project locally, know that this project is updated to always work with the
 latest verion of Python 3 with the following modules:
 * numpy
 * PIL
@@ -59,6 +61,6 @@ TODO
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
 
 ## Acknowledgments - *Tips fedora*
-* [PurpleBooth's Readme templte](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2)
+* [PurpleBooth's Readme template](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2)
 * God, for not existing.
 * TODO
