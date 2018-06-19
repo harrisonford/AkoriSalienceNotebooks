@@ -1,28 +1,19 @@
-import numpy as np
-from PIL import Image
+import numpy.ma as ma
 
 
-# TODO: This function needs to check both maps are normalized and transformed to 0-255 range correctly
-# TODO: This function should resize salmap only if it's not the same size
-# TODO: This function should check if values are logical before np.logical is used
+# TODO: This function doesn't check if maps are same size
 # This function finds the normalized scanpath saliency between two different saliency maps as the mean value of the
 # normalized saliency map at fixation locations
-def nss(salmap, fixmap):
+def nss(salmap, fixmap, threshold=0):
 
-    # First we may need to resize salience map to fixmap size
-    # Import fixmap and salmap to PIL.Image
-    fixmap_im = Image.fromarray(fixmap)  # This has to be reescaled to 0-255 range
-    salmap_im = Image.fromarray(salmap)
+    # ASUMES BOTH MAPS ARE SAME SIZE! And also np.arrays
+    # Z-score salmap and binarize fixmap
+    salmap_scored = (salmap - salmap.mean())/salmap.std()
+    fixmap_mask = fixmap <= threshold  # all these values are going to be eliminated
 
-    im_width, im_height = fixmap_im.size
-    salmap_im_resized = salmap_im.resize((im_width, im_height), Image.BICUBIC)
-
-    # Now transform saliency map back to np.array
-    salmap_resized = np.array(salmap_im_resized)
-
-    # Make a logical count between salience map and fixmap
-    intermap = np.logical_and(salmap_resized, fixmap)
-    return np.sum(intermap)
+    # Take mean value of fixation locations in fixmap as your score
+    intermap = ma.masked_array(salmap_scored, mask=fixmap_mask)
+    return intermap.mean()
 
 
 # Creates a ROC-curve by sweeping through threshold values determined by range of saliency map values at fixation
