@@ -3,28 +3,17 @@ from PIL import Image
 import numpy as np
 import scipy.ndimage.filters as ft
 import sklearn.preprocessing as sk
+import urllib3
 
 
 # Make a function that loads csv's and image from dataset
 def csv_fixmap(subject_list, page, number, **kwargs):
 
-    # Get parameters from kwargs
-    if 'ignore' in kwargs:
-        ignore = kwargs['ignore']
-    else:
-        ignore = 0
-    if 'norm' in kwargs:
-        normalize = kwargs['norm']
-    else:
-        normalize = False
-    if 'db' in kwargs:
-        database = kwargs['db']
-    else:
-        database = 'local'
-    if 'map' in kwargs:
-        map_type = kwargs['map']
-    else:
-        map_type = 'time'
+    # Get parameters from kwargs('key', default_val, **kwargs)
+    ignore = kwarget('ignore', 0, **kwargs)
+    normalize = kwarget('norm', False, **kwargs)
+    database = kwarget('db', 'local', **kwargs)
+    map_type = kwarget('map', 'time', **kwargs)
 
     # Get image and dimensions
     image_id = "{page} {num}.jpg".format(page=page, num=number)
@@ -47,8 +36,10 @@ def csv_fixmap(subject_list, page, number, **kwargs):
 
         if database == 'local':
             file_path = "{path}/{subject}".format(path='dataset', subject=subject)
+        elif database == 'Drive':
+            file_path = None  # in the future can be loaded from Drive database
         else:
-            file_path = None  # in the future can be loaded from NoSQL database
+            raise ValueError("Wrong parameter chosen as database="+database)
 
         with open(file_path, 'r', newline='\n') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',', quotechar='\'')
@@ -73,6 +64,52 @@ def csv_fixmap(subject_list, page, number, **kwargs):
         return sk.normalize(total_fixmap, 'l2'), im
     else:
         return total_fixmap, im
+
+
+# This is how age-gender histogram was made
+def age_gender(database='gcloud'):
+    # Start by loading subjectInfo.csv
+    if database == 'gcloud':
+        # load using public api link from my google cloud
+        api = 'http://storage.googleapis.com'
+        bucket = 'akoriweb_misc'
+        file = 'subjectInfo.csv'
+        google_url = "{api}/{bucket}/{file}".format(api=api, bucket=bucket, file=file)
+
+        # create a pool manager
+        http = urllib3.PoolManager()
+        # use it to request a file
+        request = http.request('GET', google_url)
+        data = request.data.decode('utf-8')
+
+        # data is actually a stream of bytes, we'll append gender and age from this stream
+        ismale = []
+        age = []
+
+        # scan by finding \n in chunks
+        chunk = 10
+        last_line = data.find('\n', 0, chunk)
+        while last_line != -1:
+            whitespace = data.find('\t', last_line+1, last_line+chunk)  # find middle whitespace
+            if whitespace == -1:
+                break
+            age.append(int(data[last_line+1:whitespace]))
+            last_line = data.find('\n', last_line+1, last_line+chunk)  # update last-line read
+            ismale.append(int(data[whitespace+1:last_line]))
+
+    else:
+        # for now database exists only in google cloud (good enough)
+        raise ValueError("Wrong parameter chosen as database="+database)
+
+    return age, ismale
+
+
+# A small function that gets item from kwargs else it sets a default, prevents using too many if-else statements
+def kwarget(key, default, **kwargs):
+    if key in kwargs:
+        return kwargs[key]
+    else:
+        return default
 
 
 # This function returns a heatmap with a gaussian filter on it
