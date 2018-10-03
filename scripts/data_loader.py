@@ -3,6 +3,8 @@ import numpy as np
 import requests
 from io import BytesIO
 from scripts.qol import kwarget
+from google.cloud import storage
+# TODO: resolve google cloud not appearing in requirements with pip freeze
 
 
 # Make a function that loads jsons and image from dataset
@@ -80,6 +82,12 @@ def fixmap(subject_list, page, number, **kwargs):
 
 # The following functions get stuff from a public google cloud bucket using urllib3
 def request_from_bucket(bucketname, filepath, api='http://storage.googleapis.com'):
-
     g_url = "{api}/{bucket}/{file}".format(api=api, bucket=bucketname, file=filepath)
     return requests.get(g_url)
+
+
+# List "blobs" from a bucket, from: https://cloud.google.com/storage/docs/listing-objects#storage-list-objects-python
+def list_blobs(bucket_name):
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    return bucket.list_blobs()
