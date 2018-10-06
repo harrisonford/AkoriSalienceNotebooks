@@ -3,11 +3,9 @@ import numpy as np
 import requests
 from io import BytesIO
 from scripts.qol import kwarget
-from google.cloud import storage
-# TODO: resolve google cloud not appearing in requirements with pip freeze
 
 
-# Make a function that loads jsons and image from dataset
+# Make a function that loads jsons and image from dataset to make a fixmap
 def fixmap(subject_list, page, number, **kwargs):
 
     # Get parameters from kwargs('key', default_val, **kwargs)
@@ -80,14 +78,103 @@ def fixmap(subject_list, page, number, **kwargs):
         return total_fixmap, im
 
 
+# Turn subject data into |t_on|t_off|image|object|
+def fixtimes(subject, bucket):
+    # TODO: This code repeats a lot internally, it should be refactored into it's own function (get_event)
+    # get json data of subject
+    request = request_from_bucket(bucket, subject)
+    subject_data = request.json()
+
+    # dinamically using header info to know what each row contains, in case database changes in the future
+    fixation_header = subject_data['fixation_header']
+    image_index = fixation_header.index("image")
+    object_index = fixation_header.index("object")
+    t_on_index = fixation_header.index("t_on")
+    t_off_index = fixation_header.index("t_off")
+
+    # iterate over fixations and store desired data
+    fixations = subject_data['fixations']
+    fix_data = np.zeros((len(fixations), 4), dtype=int)
+    for i_fix, a_fix in enumerate(fixations):
+        # transform image name into a number
+        # use image name without mosaico and .png later
+        im_name = a_fix[image_index]
+        image_numbers = [int(s) for s in im_name[7:-4].split() if s.isdigit()]
+        object_numbers = [int(s) for s in a_fix[object_index].split() if s.isdigit()]
+        if any(image_numbers):
+            image = image_numbers[0]
+        else:
+            image = -1
+        if any(object_numbers):
+            obj = object_numbers[0]
+        else:
+            obj = -1
+        fix_data[i_fix, :] = [a_fix[t_on_index], a_fix[t_off_index], image, obj]
+
+    return fix_data
+
+
 # The following functions get stuff from a public google cloud bucket using urllib3
 def request_from_bucket(bucketname, filepath, api='http://storage.googleapis.com'):
     g_url = "{api}/{bucket}/{file}".format(api=api, bucket=bucketname, file=filepath)
     return requests.get(g_url)
 
 
-# List "blobs" from a bucket, from: https://cloud.google.com/storage/docs/listing-objects#storage-list-objects-python
-def list_blobs(bucket_name):
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(bucket_name)
-    return bucket.list_blobs()
+# make a list of subjects: "pup01.json", "pup02.json", ..., "pup28.json"
+bucket = "processed_mosaic_experimental_data"
+dataset_dir = ["pup" + str(num + 1).zfill(2) + ".json" for num in range(28)]
+
+# for every image we calculate in a time window how many times subject travels to a mosaic
+mosaic_time = 12000  # 12 seconds
+window = 2000
+images = 84
+steps = range(0, mosaic_time, window)
+
+object_rate = np.zeros((len(dataset_dir), len(steps)), dtype=int)
+for i_subject, subject in enumerate(dataset_dir):
+    subject_fixations = fixtimes(subject, bucket)  # loads |t_on|t_off|image|object|
+
+    subject_object_rate = np.zeros(len(steps))
+    # TODO: for now we use t0 == t_on(0) but it's not exact
+    for image in range(images):  # we make (t_on-t0, object) array f/e image
+
+        subfix = []
+        for a_fix in subject_fixations:
+            if a_fix[2] == image:
+                subfix.append([a_fix[0], a_fix[3]])
+        subfix = np.array(subfix)
+        # make first fixation start at t0
+        for i in range(len(subfix)):
+            subfix[i, 0] = subfix[i, 0] - subfix[0, 0]
+
+
+# make a list of subjects: "pup01.json", "pup02.json", ..., "pup28.json"
+bucket = "processed_mosaic_experimental_data"
+dataset_dir = ["pup" + str(num + 1).zfill(2) + ".json" for num in range(28)]
+
+# for every image we calculate in a time window how many times subject travels to a mosaic
+mosaic_time = 12000  # 12 seconds
+window = 2000
+images = 84
+steps = range(0, mosaic_time, window)
+
+object_rate = np.zeros((len(dataset_dir), len(steps)), dtype=int)
+for i_subject, subject in enumerate(dataset_dir):
+    subject_fixations = fixtimes(subject, bucket)  # loads |t_on|t_off|image|object|
+
+    subject_object_rate = np.zeros(len(steps))
+    # TODO: for now we use t0 == t_on(0) but it's not exact
+    for image in range(images):  # we make (t_on-t0, object) array f/e image
+
+        subfix = []
+        for a_fix in subject_fixations:
+            if a_fix[2] == image+1:
+                subfix.append([a_fix[0], a_fix[3]])
+        subfix = np.array(subfix)
+        # make first fixation start at 0
+        t0 = subfix[0, 0]
+        for i in range(len(subfix)):
+            subfix[i, 0] = subfix[i, 0] - t0
+
+        # now calculate "transition rate"
+        image_object_rate = np.zeros(len(steps))
